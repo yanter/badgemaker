@@ -1,0 +1,932 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Square Badge Maker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: control rail | artwork positioner | A4 sheet preview. One column on phones (positioner, controls, sheet).
+   Accent is the magenta of a print shop's cut-contour spot colour; everything else stays ink-blue neutral. */
+:root {
+  --bg: #edf0f6;
+  --surface: #ffffff;
+  --surface-2: #e3e8f2;
+  --field: #f5f7fb;
+  --fg: #131728;
+  --muted: #586079;
+  --line: #ccd3e2;
+  --accent: #c8125f;
+  --on-accent: #ffffff;
+  --focus: #c8125f;
+  --warn: #9a5b00;
+  --paper-shadow: 0 1px 2px rgba(19, 23, 40, .12), 0 12px 28px rgba(19, 23, 40, .14);
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1221;
+    --surface: #161b2f;
+    --surface-2: #212848;
+    --field: #0e1221;
+    --fg: #e8ebf6;
+    --muted: #9ba3bf;
+    --line: #2b3354;
+    --accent: #ff5a9f;
+    --on-accent: #1c0813;
+    --focus: #ff5a9f;
+    --warn: #f0b04a;
+    --paper-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 28px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1221;
+  --surface: #161b2f;
+  --surface-2: #212848;
+  --field: #0e1221;
+  --fg: #e8ebf6;
+  --muted: #9ba3bf;
+  --line: #2b3354;
+  --accent: #ff5a9f;
+  --on-accent: #1c0813;
+  --focus: #ff5a9f;
+  --warn: #f0b04a;
+  --paper-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 28px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font-display);
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1360px; margin-inline: auto; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 28px; margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.mark { flex: none; }
+h1 { margin: 0; font-size: clamp(28px, 4.2vw, 42px); line-height: 1; letter-spacing: -.025em; font-weight: 700; text-wrap: balance; }
+.tag { margin: 6px 0 0; color: var(--muted); max-width: 52ch; }
+.stats { display: flex; gap: 0; margin: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.stats div { padding: 8px 14px; border-left: 1px solid var(--line); min-width: 0; }
+.stats div:first-child { border-left: 0; }
+.stats dt { font: 500 10.5px var(--font-mono); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 2px 0 0; font: 500 15px var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Grid */
+.app { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "editor" "controls" "sheet"; align-items: start; }
+@media (min-width: 820px) {
+  .app { grid-template-columns: 304px minmax(0, 1fr); grid-template-areas: "controls editor" "controls sheet"; }
+}
+@media (min-width: 1240px) {
+  .app { grid-template-columns: 304px minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "controls editor sheet"; }
+}
+#pEditor { grid-area: editor; }
+#controls { grid-area: controls; }
+#pSheet { grid-area: sheet; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.phead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 12px; }
+.phead h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.meta { font: 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Editor + sheet canvases */
+.stage { position: relative; max-width: 580px; margin-inline: auto; }
+#editor { display: block; width: 100%; aspect-ratio: 1; border-radius: 3px; background: var(--field); cursor: grab; touch-action: none; outline-offset: 3px; }
+#editor.grabbing { cursor: grabbing; }
+.stage.drop::after { content: "Drop image to use it"; position: absolute; inset: 0; display: grid; place-items: center; border: 2px dashed var(--accent); border-radius: 3px; background: color-mix(in srgb, var(--surface) 82%, transparent); font-weight: 650; color: var(--accent); pointer-events: none; }
+.hint { margin: 10px 0 0; color: var(--muted); font-size: 12.5px; text-align: center; }
+.sheetbox { display: flex; justify-content: center; padding: 18px; background: var(--surface-2); border-radius: 6px; }
+#sheet { display: block; width: 100%; max-width: 520px; height: auto; background: #fff; box-shadow: var(--paper-shadow); }
+.legend { margin: 12px 0 0; color: var(--muted); font-size: 12.5px; }
+.warn { margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--warn); border-radius: 6px; color: var(--warn); font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.note { margin: 10px 0 0; min-height: 1.45em; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* Controls */
+.sec { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--line); }
+.sec:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
+.eyebrow { margin: 0 0 10px; font: 500 11px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stack { display: grid; gap: 12px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field label, .lbl { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 12.5px; color: var(--muted); }
+.field output { font-family: var(--font-mono); color: var(--fg); }
+.num { position: relative; }
+.num input { width: 100%; min-width: 0; font: 500 14px var(--font-mono); font-variant-numeric: tabular-nums; padding: 8px 34px 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--fg); }
+.num span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 12px var(--font-mono); color: var(--muted); pointer-events: none; }
+.field input[type="text"] { width: 100%; min-width: 0; font: 500 14px var(--font-mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--fg); }
+.plist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 264px; overflow-y: auto; }
+.ph { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); }
+.ph[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ph-pick { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.ph-pick img { width: 36px; height: 36px; flex: none; object-fit: cover; border-radius: 3px; background: #fff; }
+.ph-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 12.5px var(--font-mono); }
+.ph-copies { display: flex; align-items: center; gap: 3px; font: 12px var(--font-mono); color: var(--muted); }
+.ph-copies input { width: 46px; padding: 5px 4px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--fg); font: 500 13px var(--font-mono); text-align: center; }
+.ph-del { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--muted); cursor: pointer; }
+.ph-del:hover { background: var(--surface-2); color: var(--fg); }
+.ph-del svg { width: 14px; height: 14px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 4px 0; }
+input[type="color"] { width: 40px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); cursor: pointer; }
+.chk { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.chk input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.chk small { display: block; color: var(--muted); font-size: 12px; }
+.small { font-size: 12.5px; color: var(--muted); margin: 0; }
+.fname { font: 500 13px var(--font-mono); overflow-wrap: anywhere; }
+.low { color: var(--warn); }
+
+.btn { font: 600 13.5px var(--font-display); display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); cursor: pointer; text-align: center; }
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; min-height: 34px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sr:focus-visible + label.btn { outline: 2px solid var(--focus); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, #editor:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 480px) {
+  .stats { width: 100%; }
+  .stats div { flex: 1; padding-inline: 10px; }
+  .stats dd { font-size: 13.5px; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" width="42" height="42" aria-hidden="true">
+        <rect x="2" y="2" width="36" height="36" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <rect x="9" y="9" width="22" height="22" rx="2" fill="var(--fg)"/>
+        <path d="M13 27l5-6 3.5 4 2.5-3 3 5z" fill="var(--bg)"/>
+        <circle cx="15.5" cy="15.5" r="2.2" fill="var(--bg)"/>
+      </svg>
+      <div>
+        <h1>Square Badge Maker</h1>
+        <p class="tag">Place your pictures, then print them across an A4 sheet of cut-ready square or round badge templates.</p>
+      </div>
+    </div>
+    <dl class="stats" aria-label="Sheet summary">
+      <div><dt>Grid</dt><dd id="stGrid">2 × 3</dd></div>
+      <div><dt>Cut size</dt><dd id="stCut">74 mm</dd></div>
+      <div><dt>Badges</dt><dd id="stCount">6</dd></div>
+    </dl>
+  </header>
+
+  <main class="app">
+    <section class="panel" id="pEditor" aria-labelledby="hEditor">
+      <div class="phead">
+        <h2 id="hEditor">Position the picture</h2>
+        <span class="meta" id="edMeta">74 × 74 mm cut</span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="editor" tabindex="0" aria-label="Badge artwork. Drag to move the picture. Arrow keys move it, plus and minus zoom."></canvas>
+      </div>
+      <p class="hint">Drag to move. Scroll or pinch to zoom. The shaded ring wraps round the badge edge. Paper outside the artwork folds behind.</p>
+    </section>
+
+    <aside class="panel" id="controls" aria-label="Settings">
+      <div class="sec">
+        <h3 class="eyebrow">Artwork</h3>
+        <div class="stack">
+          <div class="btns">
+            <input class="sr" type="file" id="file" accept="image/*" multiple>
+            <label class="btn primary" for="file">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11V2.5M4.5 6L8 2.5 11.5 6M2.5 10.5v3h11v-3"/></svg>
+              Choose images
+            </label>
+            <button class="btn" type="button" id="btnSample">Use sample</button>
+          </div>
+          <div>
+            <ul class="plist" id="plist" aria-label="Photos"></ul>
+            <p class="small" id="plistHint" style="margin-top:8px" hidden>Badges follow this order and repeat to fill the sheet. Raise a photo's copies to repeat it.</p>
+          </div>
+          <div>
+            <div class="fname" id="imgName">Sample artwork</div>
+            <p class="small" id="imgMeta"></p>
+          </div>
+          <div class="field">
+            <label for="zoom"><span>Zoom</span><output id="zoomOut" for="zoom">100%</output></label>
+            <input type="range" id="zoom" min="10" max="400" step="1" value="100">
+          </div>
+          <div class="btns">
+            <button class="btn" type="button" id="btnFill">Fill</button>
+            <button class="btn" type="button" id="btnFit">Fit</button>
+            <button class="btn" type="button" id="btnRotL" aria-label="Rotate left 90 degrees">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A5.5 5.5 0 1 1 3.2 10M3 2.5v4h4"/></svg>
+            </button>
+            <button class="btn" type="button" id="btnRotR" aria-label="Rotate right 90 degrees">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6.5A5.5 5.5 0 1 0 12.8 10M13 2.5v4H9"/></svg>
+            </button>
+            <button class="btn" type="button" id="btnReset">Reset</button>
+          </div>
+          <div class="field">
+            <label for="bg"><span>Colour behind the picture</span></label>
+            <input type="color" id="bg" value="#ffffff">
+          </div>
+          <div class="field">
+            <label for="site"><span>Website on the badge</span></label>
+            <input type="text" id="site" maxlength="40" value="www.memorybadges.com" placeholder="Leave empty for none" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3 class="eyebrow">Template</h3>
+        <div class="stack">
+          <div class="seg" id="shape" role="group" aria-label="Badge shape">
+            <button type="button" data-shape="square" aria-pressed="true">Square</button>
+            <button type="button" data-shape="round" aria-pressed="false">Round 58 mm</button>
+          </div>
+          <div class="row">
+            <div class="field"><label for="face">Image area</label><div class="num"><input type="number" id="face" inputmode="decimal" min="20" max="190" step="0.1" value="52.9"><span>mm</span></div></div>
+            <div class="field"><label for="bleed">Artwork bleed</label><div class="num"><input type="number" id="bleed" inputmode="decimal" min="20" max="190" step="0.1" value="60.5"><span>mm</span></div></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="trim">Cut line</label><div class="num"><input type="number" id="trim" inputmode="decimal" min="20" max="190" step="0.1" value="69.3"><span>mm</span></div></div>
+            <div class="field" id="fBleedCh"><label for="bleedCh">Bleed corner</label><div class="num"><input type="number" id="bleedCh" inputmode="decimal" min="0" max="60" step="0.1" value="6.8"><span>mm</span></div></div>
+          </div>
+          <div class="row">
+            <div class="field" id="fTrimCh"><label for="trimCh">Cut corner</label><div class="num"><input type="number" id="trimCh" inputmode="decimal" min="0" max="95" step="0.1" value="15.5"><span>mm</span></div></div>
+            <div class="field"><label>&nbsp;</label><button class="btn" type="button" id="btnTemplate" style="width:100%">Reset to template</button></div>
+          </div>
+          <p class="small" id="tplNote">Measured from your template. The picture prints inside the artwork bleed, the paper is cut on the cut line, and the image area is the visible front.</p>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3 class="eyebrow">A4 sheet</h3>
+        <div class="stack">
+          <div class="seg" id="orient" role="group" aria-label="Page orientation">
+            <button type="button" data-orient="portrait" aria-pressed="true">Portrait</button>
+            <button type="button" data-orient="landscape" aria-pressed="false">Landscape</button>
+          </div>
+          <div class="row">
+            <div class="field"><label for="margin">Page margin</label><div class="num"><input type="number" id="margin" inputmode="decimal" min="0" max="40" step="0.5" value="8"><span>mm</span></div></div>
+            <div class="field"><label for="gap">Gap between</label><div class="num"><input type="number" id="gap" inputmode="decimal" min="0" max="20" step="0.5" value="3"><span>mm</span></div></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="count">Badges to print</label><div class="num"><input type="number" id="count" inputmode="numeric" min="0" step="1" value="6"><span>pcs</span></div></div>
+            <div class="field"><label>&nbsp;</label><button class="btn" type="button" id="btnFillSheet" style="width:100%">Fill sheet</button></div>
+          </div>
+          <label class="chk"><input type="checkbox" id="cutLines" checked><span>Cut lines<small>Outline and centre ticks on every badge.</small></span></label>
+          <label class="chk"><input type="checkbox" id="faceLine"><span>Face outline<small>Prints a magenta hairline at the image area edge.</small></span></label>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel" id="pSheet" aria-labelledby="hSheet">
+      <div class="phead">
+        <h2 id="hSheet">A4 sheet</h2>
+        <span class="meta" id="sheetMeta">Portrait · 210 × 297 mm</span>
+      </div>
+      <p class="warn" id="fitWarn" hidden>This badge does not fit on the page. Lower the cut line size, gap or margin.</p>
+      <div class="sheetbox"><canvas id="sheet" aria-label="Preview of the A4 badge sheet"></canvas></div>
+      <p class="legend">Dashed lines in the preview mark the visible face. They print only when Face outline is on.</p>
+      <div class="tools">
+        <button class="btn primary" type="button" id="savePdf" disabled>Save A4 PDF</button>
+        <button class="btn" type="button" id="savePng" disabled>Save A4 PNG</button>
+        <button class="btn" type="button" id="saveOne" disabled>Save this badge</button>
+      </div>
+      <p class="note" id="note" role="status" aria-live="polite">Checking whether saving is available…</p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var A4 = { w: 210, h: 297 };
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
+  var fmt = function (n) { return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ""); };
+
+  var state = {
+    shape: "square", face: 52.9, bleed: 60.5, trim: 69.3, bleedCh: 6.8, trimCh: 15.5, margin: 6, gap: 1, landscape: false, count: null, site: "www.memorybadges.com",
+    cutLines: true, faceLine: false
+  };
+  /* Each photo keeps its own position. state.src, state.zoom and the rest read and write the selected photo. */
+  var photos = [], sel = 0, MAX_PHOTOS = 20;
+  var PH_DEFAULT = { src: null, srcName: "", down: 1, origW: 0, origH: 0, rot: 0, zoom: 1, ox: 0, oy: 0, bg: "#ffffff" };
+  Object.keys(PH_DEFAULT).forEach(function (k) {
+    Object.defineProperty(state, k, {
+      enumerable: true,
+      get: function () { return photos[sel] ? photos[sel][k] : PH_DEFAULT[k]; },
+      set: function (v) { if (photos[sel]) photos[sel][k] = v; }
+    });
+  });
+  var dl = null;
+  var saveState = "checking";
+
+  /* ---------- sample artwork (drawn, not a photo) ---------- */
+  function makeSample() {
+    var c = document.createElement("canvas");
+    c.width = 1600; c.height = 1200;
+    var g = c.getContext("2d");
+    var sky = g.createLinearGradient(0, 0, 0, 1200);
+    sky.addColorStop(0, "#2a1b6e");
+    sky.addColorStop(0.6, "#b8407f");
+    sky.addColorStop(1, "#f0805a");
+    g.fillStyle = sky; g.fillRect(0, 0, 1600, 1200);
+    g.save(); g.translate(800, 700);
+    for (var i = 0; i < 20; i++) {
+      g.rotate(Math.PI * 2 / 20);
+      g.fillStyle = i % 2 ? "rgba(255,214,102,.20)" : "rgba(255,255,255,.07)";
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(-120, -1500); g.lineTo(120, -1500); g.closePath(); g.fill();
+    }
+    g.restore();
+    var sun = g.createLinearGradient(0, 380, 0, 980);
+    sun.addColorStop(0, "#ffe590"); sun.addColorStop(1, "#ff9a56");
+    g.fillStyle = sun; g.beginPath(); g.arc(800, 680, 300, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 6;
+    g.beginPath(); g.arc(800, 680, 340, 0, Math.PI * 2); g.stroke();
+    function hills(base, amp, col, ph) {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, 1200);
+      for (var x = 0; x <= 1600; x += 20) g.lineTo(x, base + Math.sin(x / 210 + ph) * amp + Math.sin(x / 90 + ph * 2) * amp * 0.25);
+      g.lineTo(1600, 1200); g.closePath(); g.fill();
+    }
+    hills(900, 55, "#3a1a6a", 0.4);
+    hills(990, 45, "#241250", 1.7);
+    hills(1080, 35, "#150b36", 3.1);
+    g.fillStyle = "rgba(255,255,255,.85)";
+    [[220, 170, 4], [1320, 120, 5], [1450, 300, 3], [380, 340, 3], [1130, 210, 4], [520, 90, 3]].forEach(function (s) {
+      g.beginPath(); g.arc(s[0], s[1], s[2], 0, Math.PI * 2); g.fill();
+    });
+    return c;
+  }
+  function makeThumb(src) {
+    var c = document.createElement("canvas"); c.width = c.height = 96;
+    var g = c.getContext("2d"), k = Math.max(96 / src.width, 96 / src.height);
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, 96, 96);
+    g.drawImage(src, (96 - src.width * k) / 2, (96 - src.height * k) / 2, src.width * k, src.height * k);
+    return c.toDataURL("image/jpeg", 0.8);
+  }
+  function makePhoto(src, name, down, ow, oh, isSample) {
+    return { src: src, srcName: name, down: down, origW: ow, origH: oh, rot: 0, zoom: 1, ox: 0, oy: 0, bg: "#ffffff",
+             copies: 1, isSample: !!isSample, thumb: makeThumb(src) };
+  }
+  function useSample() {
+    for (var i = 0; i < photos.length; i++) if (photos[i].isSample) { selectPhoto(i); return; }
+    photos.push(makePhoto(makeSample(), "Sample artwork", 1, 1600, 1200, true));
+    renderPhotos(); selectPhoto(photos.length - 1);
+  }
+
+  /* ---------- photo list ---------- */
+  function markSelected() {
+    Array.prototype.forEach.call($("plist").children, function (li, i) { li.setAttribute("aria-current", String(i === sel)); });
+  }
+  function selectPhoto(i) {
+    sel = clamp(i, 0, photos.length - 1);
+    markSelected(); syncInputs(); refresh();
+  }
+  function removePhoto(i) {
+    photos.splice(i, 1);
+    if (!photos.length) { useSample(); return; }
+    if (i < sel) sel--;
+    sel = clamp(sel, 0, photos.length - 1);
+    renderPhotos(); syncInputs(); refresh();
+  }
+  function renderPhotos() {
+    var ul = $("plist");
+    ul.textContent = "";
+    photos.forEach(function (p, i) {
+      var li = document.createElement("li"); li.className = "ph"; li.setAttribute("aria-current", String(i === sel));
+      var pick = document.createElement("button"); pick.type = "button"; pick.className = "ph-pick"; pick.dataset.i = String(i);
+      pick.setAttribute("aria-label", "Edit " + p.srcName);
+      var im = document.createElement("img"); im.src = p.thumb; im.alt = "";
+      var nm = document.createElement("span"); nm.className = "ph-name"; nm.textContent = p.srcName;
+      pick.appendChild(im); pick.appendChild(nm);
+      var lab = document.createElement("label"); lab.className = "ph-copies";
+      var x = document.createElement("span"); x.textContent = "×"; x.setAttribute("aria-hidden", "true");
+      var inp = document.createElement("input"); inp.type = "number"; inp.min = "1"; inp.max = "99"; inp.step = "1";
+      inp.value = String(p.copies); inp.className = "ph-copy"; inp.dataset.i = String(i);
+      inp.setAttribute("aria-label", "Copies of " + p.srcName);
+      lab.appendChild(x); lab.appendChild(inp);
+      var del = document.createElement("button"); del.type = "button"; del.className = "ph-del"; del.dataset.i = String(i);
+      del.setAttribute("aria-label", "Remove " + p.srcName);
+      del.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>';
+      li.appendChild(pick); li.appendChild(lab); li.appendChild(del);
+      ul.appendChild(li);
+    });
+    $("plistHint").hidden = photos.length < 2;
+  }
+  function buildSeq() {
+    var q = [];
+    photos.forEach(function (p, i) { for (var n = 0; n < Math.max(1, p.copies | 0); n++) q.push(i); });
+    return q.length ? q : [0];
+  }
+
+  /* ---------- image loading ---------- */
+  function readImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("unreadable")); };
+      img.src = url;
+    });
+  }
+  function photoFromImage(img, name) {
+    var w = img.naturalWidth || img.width || 1024, h = img.naturalHeight || img.height || 1024;
+    var k = Math.min(1, 2200 / Math.max(w, h));
+    var c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return makePhoto(c, name, k, w, h, false);
+  }
+  async function loadFiles(files) {
+    var list = Array.prototype.filter.call(files || [], function (f) { return /^image\//.test(f.type); });
+    if (!list.length) { setNote("That is not an image. Try JPG, PNG, WebP or GIF files."); return; }
+    var real = photos.filter(function (p) { return !p.isSample; }).length;
+    var room = Math.max(0, MAX_PHOTOS - real), skipped = 0, failed = 0, added = [];
+    if (list.length > room) { skipped = list.length - room; list = list.slice(0, room); }
+    setNote(list.length > 1 ? "Reading " + list.length + " photos…" : "Reading photo…");
+    for (var i = 0; i < list.length; i++) {
+      try { added.push(photoFromImage(await readImage(list[i]), list[i].name || "Pasted image")); } catch (e) { failed++; }
+    }
+    if (added.length) {
+      photos = photos.filter(function (p) { return !p.isSample; });
+      var first = photos.length;
+      added.forEach(function (p) { photos.push(p); });
+      sel = first;
+      renderPhotos(); syncInputs(); refresh();
+    }
+    var msg = [];
+    if (added.length) msg.push(added.length === 1 ? "Added 1 photo." : "Added " + added.length + " photos.");
+    if (failed) msg.push(failed + " could not be read.");
+    if (skipped) msg.push(skipped + " skipped. The limit is " + MAX_PHOTOS + " photos.");
+    setNote(msg.join(" "));
+  }
+
+  /* ---------- geometry ---------- */
+  function sizes() {
+    var T = Math.max(10, state.trim), B = Math.min(Math.max(10, state.bleed), T), F = Math.min(Math.max(10, state.face), B);
+    return { T: T, B: B, F: F };
+  }
+  function cutSize() { return sizes().T; }
+  function layout() {
+    var pw = state.landscape ? A4.h : A4.w, ph = state.landscape ? A4.w : A4.h;
+    var cut = cutSize();
+    var uw = pw - 2 * state.margin, uh = ph - 2 * state.margin;
+    var cols = Math.max(0, Math.floor((uw + state.gap + 1e-9) / (cut + state.gap)));
+    var rows = Math.max(0, Math.floor((uh + state.gap + 1e-9) / (cut + state.gap)));
+    var total = cols * rows;
+    var count = state.count == null ? total : Math.min(state.count, total);
+    var gw = cols * cut + Math.max(0, cols - 1) * state.gap;
+    var gh = rows * cut + Math.max(0, rows - 1) * state.gap;
+    return { pw: pw, ph: ph, cut: cut, cols: cols, rows: rows, total: total, count: count, x0: (pw - gw) / 2, y0: (ph - gh) / 2 };
+  }
+  function rotDimsOf(p) {
+    var odd = p.rot % 2 === 1;
+    return { iw: odd ? p.src.height : p.src.width, ih: odd ? p.src.width : p.src.height };
+  }
+  function rotDims() { return rotDimsOf(photos[sel]); }
+
+  /* ---------- drawing ---------- */
+  /* chamfer (mm) of a square of size sz mm, expressed in px for a square drawn s px wide */
+  function chOf(ch, sz, s) { return Math.max(0, Math.min(ch, sz / 2 - 0.01)) * s / sz; }
+  function octPath(ctx, x, y, S, c) {
+    ctx.beginPath();
+    if (state.shape === "round") { ctx.arc(x + S / 2, y + S / 2, S / 2, 0, Math.PI * 2); ctx.closePath(); return; }
+    ctx.moveTo(x + c, y); ctx.lineTo(x + S - c, y); ctx.lineTo(x + S, y + c); ctx.lineTo(x + S, y + S - c);
+    ctx.lineTo(x + S - c, y + S); ctx.lineTo(x + c, y + S); ctx.lineTo(x, y + S - c); ctx.lineTo(x, y + c);
+    ctx.closePath();
+  }
+  function strokeOct(ctx, x, y, S, c, lw, color, dash, ticks) {
+    ctx.save();
+    ctx.lineWidth = lw; ctx.strokeStyle = color;
+    if (dash) ctx.setLineDash(dash);
+    octPath(ctx, x, y, S, c); ctx.stroke();
+    if (ticks) {
+      ctx.setLineDash([]);
+      var m = S / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + m, y); ctx.lineTo(x + m, y + ticks);
+      ctx.moveTo(x + m, y + S); ctx.lineTo(x + m, y + S - ticks);
+      ctx.moveTo(x, y + m); ctx.lineTo(x + ticks, y + m);
+      ctx.moveTo(x + S, y + m); ctx.lineTo(x + S - ticks, y + m);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function strokeSquare(ctx, x, y, S, lw, color, dash) {
+    ctx.save();
+    ctx.lineWidth = lw; ctx.strokeStyle = color;
+    if (dash) ctx.setLineDash(dash);
+    if (state.shape === "round") { ctx.beginPath(); ctx.arc(x + S / 2, y + S / 2, S / 2, 0, Math.PI * 2); ctx.stroke(); }
+    else ctx.strokeRect(x, y, S, S);
+    ctx.restore();
+  }
+  /* artwork: s px = the bleed square; clipped to the bleed shape */
+  function drawArt(ctx, x, y, s, p) {
+    p = p || photos[sel];
+    ctx.save();
+    octPath(ctx, x, y, s, chOf(state.bleedCh, sizes().B, s)); ctx.clip();
+    ctx.fillStyle = p.bg; ctx.fillRect(x, y, s, s);
+    if (p.src) {
+      var d = rotDimsOf(p);
+      var k = Math.max(s / d.iw, s / d.ih) * p.zoom;
+      ctx.translate(x + s / 2 + p.ox * s, y + s / 2 + p.oy * s);
+      ctx.rotate(p.rot * Math.PI / 2);
+      ctx.scale(k, k);
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(p.src, -p.src.width / 2, -p.src.height / 2);
+    }
+    ctx.restore();
+    drawSite(ctx, x, y, s);
+  }
+  /* website line: centred in the ring between the image area and the artwork edge, as on the template */
+  function drawSite(ctx, x, y, s) {
+    var txt = (state.site || "").trim();
+    if (!txt) return;
+    var z = sizes(), k = s / z.B, ring = (z.B - z.F) / 2;
+    if (ring < 1.2) return;
+    var fs = Math.min(1.7, ring * 0.62) * k, cx = x + s / 2, cy = y + s - ring / 2 * k;
+    ctx.save();
+    ctx.font = "500 " + fs + "px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    var w = ctx.measureText(txt).width, lum = 0.5;
+    try {
+      var sx = Math.max(0, Math.floor(cx - w / 2)), sy = Math.max(0, Math.floor(cy - fs));
+      var d = ctx.getImageData(sx, sy, Math.max(1, Math.ceil(w)), Math.max(1, Math.ceil(fs * 2))).data, t = 0, n = 0;
+      for (var i = 0; i < d.length; i += 16) { if (d[i + 3] > 0) { t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; n++; } }
+      if (n) lum = t / n;
+    } catch (e) {}
+    ctx.fillStyle = lum > 0.55 ? "#231f20" : "#ffffff";
+    ctx.translate(cx, cy); ctx.rotate(Math.PI);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
+  }
+  /* one badge slot: S px = the cut square; artwork sits centred inside it */
+  function drawBadge(ctx, x, y, S, p) {
+    var z = sizes(), bs = z.B / z.T * S, off = (S - bs) / 2;
+    drawArt(ctx, x + off, y + off, bs, p);
+  }
+  function renderEditor() {
+    var cv = $("editor");
+    var rect = cv.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var px = Math.max(240, Math.round(rect.width * dpr));
+    if (cv.width !== px) { cv.width = px; cv.height = px; }
+    var ctx = cv.getContext("2d"), S = px;
+    var z = sizes(), k = S / z.T;
+    var bs = z.B * k, bo = (S - bs) / 2, fs = z.F * k, fo = (S - fs) / 2;
+    var cT = chOf(state.trimCh, z.T, S), cB = chOf(state.bleedCh, z.B, bs);
+    ctx.clearRect(0, 0, S, S);
+    ctx.save(); octPath(ctx, 0, 0, S, cT); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.restore();
+    drawBadge(ctx, 0, 0, S);
+    if (bs - fs > 1) {
+      ctx.save();
+      octPath(ctx, bo, bo, bs, cB); ctx.clip();
+      ctx.fillStyle = "rgba(8,10,26,.45)";
+      ctx.beginPath(); ctx.rect(bo, bo, bs, bs);
+      if (state.shape === "round") { ctx.moveTo(S / 2 + fs / 2, S / 2); ctx.arc(S / 2, S / 2, fs / 2, 0, Math.PI * 2); } else ctx.rect(fo, fo, fs, fs);
+      ctx.fill("evenodd");
+      ctx.restore();
+    }
+    strokeOct(ctx, bo, bo, bs, cB, 1 * dpr, "rgba(20,20,40,.6)", [5 * dpr, 4 * dpr]);
+    strokeSquare(ctx, fo, fo, fs, 3.5 * dpr, "rgba(255,255,255,.9)");
+    strokeSquare(ctx, fo, fo, fs, 1.5 * dpr, "#ec008c");
+    strokeOct(ctx, 0, 0, S, cT, 1.4 * dpr, "#1b1b1b", null, 1.7 * k);
+    if (bo >= 16 * dpr && state.shape !== "round") {
+      ctx.save();
+      ctx.font = "500 " + (10 * dpr) + 'px "IBM Plex Mono", ui-monospace, monospace';
+      ctx.fillStyle = "#4a5068"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("CUT " + fmt(z.T) + " MM", S / 2, bo / 2);
+      ctx.fillText("ARTWORK " + fmt(z.B) + " MM · IMAGE AREA " + fmt(z.F) + " MM", S / 2, S - bo / 2);
+      ctx.restore();
+    }
+  }
+  function renderSheet(ctx, L, ppm, preview) {
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, L.pw * ppm, L.ph * ppm);
+    var z = sizes(), S = z.T * ppm, fs = z.F * ppm, fo = (S - fs) / 2, cT = chOf(state.trimCh, z.T, S);
+    var seq = buildSeq();
+    for (var i = 0; i < L.total; i++) {
+      var c = i % L.cols, r = Math.floor(i / L.cols);
+      var x = (L.x0 + c * (L.cut + state.gap)) * ppm, y = (L.y0 + r * (L.cut + state.gap)) * ppm;
+      if (i < L.count) {
+        drawBadge(ctx, x, y, S, photos[seq[i % seq.length]]);
+        if (state.faceLine) {
+          strokeSquare(ctx, x + fo, y + fo, fs, 0.35 * ppm, "#ffffff");
+          strokeSquare(ctx, x + fo, y + fo, fs, 0.12 * ppm, "#ec008c");
+        } else if (preview) {
+          strokeSquare(ctx, x + fo, y + fo, fs, 1.1, "rgba(0,0,0,.55)", [5, 4]);
+          strokeSquare(ctx, x + fo, y + fo, fs, 1.1, "rgba(255,255,255,.95)", [5, 4]);
+        }
+        if (state.cutLines) strokeOct(ctx, x, y, S, cT, 0.25 * ppm, "#1b1b1b", null, 1.7 * ppm);
+      } else if (preview) {
+        strokeOct(ctx, x, y, S, cT, 1, "#b7bfd2", [6, 5]);
+      }
+    }
+  }
+
+  /* ---------- UI sync ---------- */
+  function setNote(t) { $("note").textContent = t; }
+  function updateStats(L) {
+    $("stGrid").textContent = L.total ? L.cols + " × " + L.rows : "none";
+    $("stCut").textContent = fmt(L.cut) + " mm";
+    $("stCount").textContent = String(L.count);
+    $("edMeta").textContent = (photos.length > 1 ? "Photo " + (sel + 1) + " of " + photos.length + " · " : "") + fmt(L.cut) + " × " + fmt(L.cut) + " mm cut";
+    $("sheetMeta").textContent = (state.landscape ? "Landscape" : "Portrait") + " · " + L.pw + " × " + L.ph + " mm";
+    $("fitWarn").hidden = L.total > 0;
+    var cnt = $("count"); cnt.max = String(L.total);
+    var m = $("imgMeta");
+    if (state.src) {
+      var d = rotDims();
+      var Bm = sizes().B;
+      var kmm = Math.max(Bm / d.iw, Bm / d.ih) * state.zoom * state.down; /* mm per original pixel */
+      var dpi = Math.round(25.4 / kmm);
+      var dims = state.origW + " × " + state.origH + " px";
+      m.className = "small" + (dpi < 150 ? " low" : "");
+      m.textContent = dims + " · about " + dpi + " dpi at " + fmt(Bm) + " mm" + (dpi < 150 ? ". Low resolution may print soft." : "");
+    }
+    $("imgName").textContent = state.srcName;
+  }
+  function syncInputs() {
+    var L = layout();
+    $("face").value = state.face; $("bleed").value = state.bleed; $("trim").value = state.trim;
+    $("bleedCh").value = state.bleedCh; $("trimCh").value = state.trimCh;
+    $("margin").value = state.margin; $("gap").value = state.gap;
+    $("count").value = L.count;
+    $("zoom").value = Math.round(state.zoom * 100);
+    $("zoomOut").textContent = Math.round(state.zoom * 100) + "%";
+    $("bg").value = state.bg;
+    $("cutLines").checked = state.cutLines; $("faceLine").checked = state.faceLine;
+    syncOrient(); syncShape();
+  }
+  function syncShape() {
+    var round = state.shape === "round";
+    Array.prototype.forEach.call(document.querySelectorAll("#shape button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.shape === state.shape));
+    });
+    $("fBleedCh").hidden = round; $("fTrimCh").hidden = round;
+    $("tplNote").textContent = round
+      ? "Round 58 mm badge. The 58 mm image area, 68 mm artwork and 75 mm cut line are common industry sizes. Check them against your own template."
+      : "Measured from your template. The picture prints inside the artwork bleed, the paper is cut on the cut line, and the image area is the visible front.";
+  }
+  function syncOrient() {
+    Array.prototype.forEach.call(document.querySelectorAll("#orient button"), function (b) {
+      b.setAttribute("aria-pressed", String((b.dataset.orient === "landscape") === state.landscape));
+    });
+  }
+  function syncSave() {
+    var ready = saveState === "ready";
+    ["savePdf", "savePng", "saveOne"].forEach(function (id) { $(id).disabled = !ready; });
+    if (saveState === "none") setNote("Saving is not available in this view. Open the page in Claude to save the sheet.");
+    else if (saveState === "ready" && /^Checking/.test($("note").textContent)) setNote("");
+  }
+
+  /* ---------- render loop ---------- */
+  var raf = 0;
+  function refresh() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; draw(); }); }
+  function draw() {
+    if (!photos.length) return;
+    var L = layout();
+    updateStats(L);
+    renderEditor();
+    var sc = $("sheet"), ppm = 5;
+    var w = Math.round(L.pw * ppm), h = Math.round(L.ph * ppm);
+    if (sc.width !== w || sc.height !== h) { sc.width = w; sc.height = h; }
+    renderSheet(sc.getContext("2d"), L, ppm, true);
+  }
+
+  /* ---------- transforms ---------- */
+  function setZoom(z) {
+    state.zoom = clamp(z, 0.1, 5);
+    $("zoom").value = Math.round(state.zoom * 100);
+    $("zoomOut").textContent = Math.round(state.zoom * 100) + "%";
+    refresh();
+  }
+  function resetPosition(all) {
+    state.zoom = 1; state.ox = 0; state.oy = 0; if (all) state.rot = 0;
+    syncInputs(); refresh();
+  }
+  function clampPan() { state.ox = clamp(state.ox, -1, 1); state.oy = clamp(state.oy, -1, 1); }
+
+  /* ---------- number fields ---------- */
+  function bindNum(id, key, min, max) {
+    var el = $(id);
+    el.addEventListener("input", function () {
+      var v = parseFloat(el.value);
+      if (!isFinite(v)) return;
+      state[key] = clamp(v, min, max);
+      refresh();
+    });
+    el.addEventListener("change", function () { el.value = state[key]; refresh(); });
+  }
+  bindNum("face", "face", 20, 190);
+  bindNum("bleed", "bleed", 20, 190);
+  bindNum("trim", "trim", 20, 190);
+  bindNum("bleedCh", "bleedCh", 0, 60);
+  bindNum("trimCh", "trimCh", 0, 95);
+  bindNum("margin", "margin", 0, 40);
+  bindNum("gap", "gap", 0, 20);
+  $("count").addEventListener("input", function () {
+    var v = parseInt($("count").value, 10);
+    if (!isFinite(v)) return;
+    state.count = Math.max(0, v); refresh();
+  });
+  $("count").addEventListener("change", function () { $("count").value = layout().count; });
+  $("btnFillSheet").addEventListener("click", function () { state.count = null; syncInputs(); refresh(); });
+
+  var SHAPE_KEYS = ["face", "bleed", "trim", "bleedCh", "trimCh"];
+  var SHAPE_DEFAULTS = {
+    square: { face: 52.9, bleed: 60.5, trim: 69.3, bleedCh: 6.8, trimCh: 15.5 },
+    round: { face: 58, bleed: 68, trim: 75, bleedCh: 0, trimCh: 0 }
+  };
+  var shapeStore = { square: Object.assign({}, SHAPE_DEFAULTS.square), round: Object.assign({}, SHAPE_DEFAULTS.round) };
+  function setShape(name) {
+    if (name === state.shape) return;
+    SHAPE_KEYS.forEach(function (k) { shapeStore[state.shape][k] = state[k]; });
+    state.shape = name;
+    SHAPE_KEYS.forEach(function (k) { state[k] = shapeStore[name][k]; });
+    syncInputs(); refresh();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#shape button"), function (b) {
+    b.addEventListener("click", function () { setShape(b.dataset.shape); });
+  });
+  $("btnTemplate").addEventListener("click", function () {
+    SHAPE_KEYS.forEach(function (k) { state[k] = SHAPE_DEFAULTS[state.shape][k]; });
+    syncInputs(); refresh();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#orient button"), function (b) {
+    b.addEventListener("click", function () { state.landscape = b.dataset.orient === "landscape"; syncInputs(); refresh(); });
+  });
+  $("cutLines").addEventListener("change", function (e) { state.cutLines = e.target.checked; refresh(); });
+  $("faceLine").addEventListener("change", function (e) { state.faceLine = e.target.checked; refresh(); });
+  $("bg").addEventListener("input", function (e) { state.bg = e.target.value; refresh(); });
+  $("site").addEventListener("input", function (e) { state.site = e.target.value; refresh(); });
+  $("zoom").addEventListener("input", function (e) { setZoom(Number(e.target.value) / 100); });
+  $("btnFill").addEventListener("click", function () { state.zoom = 1; state.ox = 0; state.oy = 0; syncInputs(); refresh(); });
+  $("btnFit").addEventListener("click", function () {
+    var d = rotDims();
+    state.zoom = clamp(Math.min(d.iw, d.ih) / Math.max(d.iw, d.ih), 0.1, 5); state.ox = 0; state.oy = 0; syncInputs(); refresh();
+  });
+  $("btnRotL").addEventListener("click", function () { state.rot = (state.rot + 3) % 4; refresh(); });
+  $("btnRotR").addEventListener("click", function () { state.rot = (state.rot + 1) % 4; refresh(); });
+  $("btnReset").addEventListener("click", function () { resetPosition(true); });
+  $("btnSample").addEventListener("click", function () { useSample(); setNote(""); });
+  $("file").addEventListener("change", function (e) { var f = Array.prototype.slice.call(e.target.files || []); e.target.value = ""; loadFiles(f); });
+  $("plist").addEventListener("click", function (e) {
+    var pick = e.target.closest(".ph-pick"), del = e.target.closest(".ph-del");
+    if (pick) selectPhoto(Number(pick.dataset.i));
+    else if (del) removePhoto(Number(del.dataset.i));
+  });
+  $("plist").addEventListener("input", function (e) {
+    var el = e.target;
+    if (!el.classList.contains("ph-copy")) return;
+    var v = parseInt(el.value, 10);
+    if (!isFinite(v)) return;
+    photos[Number(el.dataset.i)].copies = clamp(v, 1, 99); refresh();
+  });
+  $("plist").addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.classList.contains("ph-copy")) el.value = String(photos[Number(el.dataset.i)].copies);
+  });
+
+  /* ---------- editor interaction ---------- */
+  var cv = $("editor"), ptrs = new Map(), pinch = null;
+  function pdist() { var a = Array.from(ptrs.values()); return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1; }
+  cv.addEventListener("pointerdown", function (e) {
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) pinch = { d: pdist(), z: state.zoom };
+    cv.classList.add("grabbing");
+  });
+  cv.addEventListener("pointermove", function (e) {
+    var p = ptrs.get(e.pointerId);
+    if (!p) return;
+    var dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 1) {
+      var r = cv.getBoundingClientRect();
+      state.ox += dx / r.width; state.oy += dy / r.height; clampPan(); refresh();
+    } else if (ptrs.size === 2 && pinch) {
+      setZoom(pinch.z * pdist() / pinch.d);
+    }
+  });
+  function endPtr(e) {
+    ptrs.delete(e.pointerId); pinch = null;
+    if (!ptrs.size) cv.classList.remove("grabbing");
+  }
+  cv.addEventListener("pointerup", endPtr);
+  cv.addEventListener("pointercancel", endPtr);
+  cv.addEventListener("wheel", function (e) { e.preventDefault(); setZoom(state.zoom * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  cv.addEventListener("keydown", function (e) {
+    var st = e.shiftKey ? 0.05 : 0.01, used = true;
+    if (e.key === "ArrowLeft") state.ox -= st;
+    else if (e.key === "ArrowRight") state.ox += st;
+    else if (e.key === "ArrowUp") state.oy -= st;
+    else if (e.key === "ArrowDown") state.oy += st;
+    else if (e.key === "+" || e.key === "=") { setZoom(state.zoom * 1.05); return e.preventDefault(); }
+    else if (e.key === "-") { setZoom(state.zoom / 1.05); return e.preventDefault(); }
+    else used = false;
+    if (used) { e.preventDefault(); clampPan(); refresh(); }
+  });
+
+  /* drop + paste */
+  var stage = $("stage");
+  ["dragenter", "dragover"].forEach(function (t) {
+    document.addEventListener(t, function (e) {
+      if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0) { e.preventDefault(); stage.classList.add("drop"); }
+    });
+  });
+  ["dragleave", "dragend"].forEach(function (t) {
+    document.addEventListener(t, function (e) { if (!e.relatedTarget) stage.classList.remove("drop"); });
+  });
+  document.addEventListener("drop", function (e) {
+    stage.classList.remove("drop");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { e.preventDefault(); loadFiles(Array.prototype.slice.call(e.dataTransfer.files)); }
+  });
+  document.addEventListener("paste", function (e) {
+    var f = e.clipboardData && e.clipboardData.files;
+    if (f && f.length) { e.preventDefault(); loadFiles(Array.prototype.slice.call(f)); }
+  });
+
+  /* ---------- export ---------- */
+  function toBlob(canvas, type, q) {
+    return new Promise(function (res, rej) { canvas.toBlob(function (b) { b ? res(b) : rej(new Error("Could not render the image.")); }, type, q); });
+  }
+  function sheetCanvas() {
+    var L = layout(), c = document.createElement("canvas");
+    c.width = Math.round(L.pw * 300 / 25.4); c.height = Math.round(L.ph * 300 / 25.4);
+    renderSheet(c.getContext("2d"), L, c.width / L.pw, false);
+    return { canvas: c, L: L };
+  }
+  function buildPdf(jpeg, wpx, hpx, wpt, hpt) {
+    var enc = new TextEncoder(), parts = [], off = [], len = 0;
+    function push(x) { var b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); len += b.length; }
+    push(new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]));
+    off[1] = len; push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    off[2] = len; push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+    off[3] = len; push("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + wpt + " " + hpt + "] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n");
+    off[4] = len;
+    push("4 0 obj\n<< /Type /XObject /Subtype /Image /Width " + wpx + " /Height " + hpx + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpeg.length + " >>\nstream\n");
+    push(jpeg); push("\nendstream\nendobj\n");
+    var content = "q " + wpt + " 0 0 " + hpt + " 0 0 cm /Im0 Do Q";
+    off[5] = len; push("5 0 obj\n<< /Length " + content.length + " >>\nstream\n" + content + "\nendstream\nendobj\n");
+    var xref = len, x = "xref\n0 6\n0000000000 65535 f \n";
+    for (var i = 1; i <= 5; i++) x += String(off[i]).padStart(10, "0") + " 00000 n \n";
+    x += "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n";
+    push(x);
+    return new Blob(parts, { type: "application/pdf" });
+  }
+  var busy = false;
+  async function save(kind) {
+    if (!dl || busy) return;
+    busy = true; ["savePdf", "savePng", "saveOne"].forEach(function (id) { $(id).disabled = true; });
+    setNote("Preparing file…");
+    try {
+      var blob, name, tag = (state.shape === "round" ? "round-" : "") + fmt(sizes().T) + "mm";
+      if (kind === "png") {
+        blob = await toBlob(sheetCanvas().canvas, "image/png"); name = "badge-sheet-" + tag + "-a4.png";
+      } else if (kind === "pdf") {
+        var s = sheetCanvas();
+        var jb = await toBlob(s.canvas, "image/jpeg", 0.93);
+        var bytes = new Uint8Array(await jb.arrayBuffer());
+        blob = buildPdf(bytes, s.canvas.width, s.canvas.height, (s.L.pw / 25.4 * 72).toFixed(3), (s.L.ph / 25.4 * 72).toFixed(3));
+        name = "badge-sheet-" + tag + "-a4.pdf";
+      } else {
+        var bm = sizes().B, px = Math.round(bm * 300 / 25.4);
+        var c = document.createElement("canvas"); c.width = px; c.height = px;
+        drawArt(c.getContext("2d"), 0, 0, px);
+        blob = await toBlob(c, "image/png"); name = "badge-artwork-" + (state.shape === "round" ? "round-" : "") + fmt(bm) + "mm.png";
+      }
+      var res = await dl.save({ filename: name, data: blob });
+      setNote(res && res.status === "saved" ? "Saved " + name + "." : "Sent " + name + ".");
+    } catch (e) {
+      var code = e && e.code;
+      if (code === "declined") setNote("Save cancelled.");
+      else if (code === "rate_limited") setNote("A save prompt is already open. Answer it, then try again.");
+      else setNote("Could not save: " + ((e && e.message) || "unknown error"));
+    } finally {
+      busy = false; syncSave();
+    }
+  }
+  $("savePdf").addEventListener("click", function () { save("pdf"); });
+  $("savePng").addEventListener("click", function () { save("png"); });
+  $("saveOne").addEventListener("click", function () { save("one"); });
+
+  /* ---------- boot ---------- */
+  if (window.ResizeObserver) new ResizeObserver(refresh).observe($("stage"));
+  window.addEventListener("resize", refresh);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refresh);
+  useSample();
+  (async function () {
+    try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+    saveState = dl ? "ready" : "none";
+    syncSave();
+  })();
+})();
+</script>
+
+</body></html>
